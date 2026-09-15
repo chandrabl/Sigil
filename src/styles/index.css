@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-950 text-parchment-100 font-body antialiased;
+  background-image:
+    radial-gradient(circle at 15% -10%, rgba(184, 147, 91, 0.10), transparent 45%),
+    radial-gradient(circle at 100% 0%, rgba(138, 46, 46, 0.08), transparent 40%);
+}
+
+::selection {
+  background: rgba(201, 164, 103, 0.35);
+  color: #f1ebda;
+}
+
+/* Visible keyboard focus everywhere — no outline: none anywhere in this app */
+:focus-visible {
+  outline: 2px solid theme("colors.brass.400");
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A single deckle/torn edge used on lot cards, in place of a rounded-card
+   kit. Drawn once as a reusable clip-path utility rather than per-card CSS. */
+.deckle-top {
+  clip-path: polygon(
+    0% 6px, 4% 0px, 9% 5px, 14% 1px, 19% 6px, 24% 0px, 29% 4px, 34% 1px,
+    39% 6px, 44% 0px, 49% 5px, 54% 1px, 59% 6px, 64% 0px, 69% 4px, 74% 1px,
+    79% 6px, 84% 0px, 89% 5px, 94% 1px, 100% 6px,
+    100% 100%, 0% 100%
+  );
+}
+
+.wax-seal {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.font-feature-oldstyle {
+  font-variant-numeric: oldstyle-nums;
+}

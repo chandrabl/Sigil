@@ -1,0 +1,234 @@
+// Local Midnight infrastructure lifecycle management (Docker + local dev stack).
+//
+// Used by scripts/deploy/deploy.mjs and the scripts/docker|blockchain/*.mjs wrappers so
+// `npm run deploy` / `npm run blockchain:start` can fully prepare the local environment
+// instead of just checking it and exiting. Waits for the resulting containers to actually
+// become healthy, attempts automatic recovery before giving up, and reports every failure
+// through the shared CLIError system (never a raw Docker/curl error).
+import { execSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { DockerError, ProofServerError, classifyError, printCliError } from './errors.mjs';
+import { checkPort, checkRequiredPorts, printPortConflicts, COMPOSE_PROJECT_NAME } from './ports.mjs';
+import { tryRestartContainer, tryStartDocker, recoverPortConflicts } from './recovery.mjs';
+
+const sh = (cmd, opts = {}) => execSync(cmd, { encoding: 'utf-8', shell: true, stdio: ['ignore', 'pipe', 'pipe'], ...opts });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** True when running in CI or any other non-interactive context — we must fail fast there. */
+export function isNonInteractive() {
+  return Boolean(process.env.CI) || !process.stdout.isTTY;
+}
+
+function dockerIsUp() {
+  try {
+    sh('docker info');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ensures Docker is running, starting it automatically when possible and waiting for it
+ * to come up. Exits the process only in CI / non-interactive contexts, where waiting
+ * indefinitely would just hang a pipeline.
+ */
+export async function ensureDockerRunning(fmt) {
+  fmt.section('\u{1F433} Docker');
+
+  if (dockerIsUp()) {
+    fmt.ok('Docker is running.');
+    return;
+  }
+
+  if (isNonInteractive()) {
+    printCliError(
+      new DockerError({
+        title: 'Docker Daemon Not Running',
+        whatHappened: 'Docker is not running, and this is a non-interactive environment — refusing to wait indefinitely.',
+        howToFix: 'Start Docker Desktop (or `sudo systemctl start docker` on Linux), then retry.',
+      }),
+      false,
+    );
+    process.exit(1);
+  }
+
+  fmt.warn('Docker is not running.');
+  const { recovered, detail } = await tryStartDocker();
+  if (recovered) {
+    fmt.ok(`Docker is running (${detail}).`);
+    return;
+  }
+
+  fmt.warn(`Could not start Docker automatically (${detail}).`);
+  fmt.info('Please start Docker manually. Checking every 2 seconds... (Ctrl+C to cancel)');
+  while (!dockerIsUp()) {
+    await sleep(2000);
+  }
+  fmt.ok('Docker is running.');
+}
+
+export function ensureIndexerSecret(rootDir, fmt = { info: () => {} }) {
+  const envFile = resolve(rootDir, 'infra', 'docker', '.env');
+  if (existsSync(envFile) && /^INDEXER_SECRET=.+$/m.test(readFileSync(envFile, 'utf-8'))) return;
+  mkdirSync(dirname(envFile), { recursive: true });
+  const secret = randomBytes(32).toString('hex');
+  writeFileSync(envFile, `INDEXER_SECRET=${secret}\n`);
+  fmt.info('Generated infra/docker/.env with a new INDEXER_SECRET.');
+}
+
+function composeState(composeFile) {
+  const state = new Map();
+  try {
+    const out = sh(`docker compose -p ${COMPOSE_PROJECT_NAME} -f ${composeFile} ps --format '{{.Service}} {{.State}}'`);
+    for (const line of out.split('\n').filter(Boolean)) {
+      const [service, ...rest] = line.split(' ');
+      state.set(service, rest.join(' '));
+    }
+  } catch {}
+  return state;
+}
+
+// A port responding is not proof this project's own container is what's answering — some
+// other project's (or an unrelated process's) stack can be squatting on the same port. Gate
+// every probe on checkPort()'s ownership signal first, so `healthy` never comes back true for
+// someone else's service.
+function ownsPort(port) {
+  const result = checkPort(port);
+  return !result.free && result.owner?.kind === 'docker' && result.owner.ours;
+}
+
+function checkRpc() {
+  if (!ownsPort(9944)) return false;
+  try {
+    sh('curl -sf http://localhost:9944/health');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function checkIndexer() {
+  if (!ownsPort(8088)) return false;
+  try {
+    // /ready (not /) 503s until the indexer has caught up with the node's chain height —
+    // that's the actual signal we need, not just "some HTTP server is listening".
+    sh('curl -sf http://localhost:8088/ready');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function checkProofServer() {
+  if (!ownsPort(6300)) return false;
+  try {
+    // No TCP-only fallback: the port accepts connections before the ~20MB ZK proving/
+    // verifying keys finish downloading, so only a real /health response counts.
+    sh('curl -sf http://localhost:6300/health');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ensures the local Docker Compose stack (node, indexer, proof-server) exists, is running,
+ * and is healthy — creating/starting containers as needed via `docker compose up -d`, which
+ * transparently handles both the "missing" and "stopped" cases. Attempts an automatic restart
+ * once before surfacing a classified failure.
+ */
+export async function ensureLocalMidnightServices(rootDir, fmt, verbose) {
+  fmt.section('\u{1F510} Proof Server');
+  fmt.info('Checking Proof Server...');
+
+  const composeFile = resolve(rootDir, 'infra', 'docker', 'docker-compose.yml');
+  ensureIndexerSecret(rootDir, fmt);
+
+  const required = ['node', 'indexer', 'proof-server'];
+  const before = composeState(composeFile);
+  const running = required.filter((s) => before.has(s) && /running/i.test(before.get(s)));
+
+  if (running.length < required.length) {
+    const missing = required.filter((s) => !before.has(s));
+    const stopped = required.filter((s) => before.has(s) && !/running/i.test(before.get(s)));
+    const needsRestart = new Set([...missing, ...stopped]);
+    // Ports of services already up: not conflicts, they're this run's own healthy containers.
+    // Recovering them here would stop+remove a container `docker compose up -d` was never
+    // going to touch, forcing an unnecessary cold restart (and, for node, a slow re-sync)
+    // of a service that didn't need it.
+    const SERVICE_PORT = { node: 9944, indexer: 8088, 'proof-server': 6300 };
+    const conflicts = checkRequiredPorts().filter((c) => {
+      const service = Object.keys(SERVICE_PORT).find((s) => SERVICE_PORT[s] === c.port);
+      return !service || needsRestart.has(service);
+    });
+    if (conflicts.length) {
+      const { resolved, remaining } = await recoverPortConflicts(conflicts, { fmt });
+      if (!resolved) {
+        printPortConflicts(remaining);
+        process.exit(1);
+      }
+    }
+
+    if (missing.length) fmt.info(`Creating container(s): ${missing.join(', ')}...`);
+    if (stopped.length) fmt.info(`Starting container(s): ${stopped.join(', ')}...`);
+    fmt.info('Running Docker Compose...');
+    try {
+      sh(`docker compose -p ${COMPOSE_PROJECT_NAME} -f ${composeFile} up -d ${required.join(' ')}`, {
+        stdio: verbose ? 'inherit' : ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (e) {
+      const err = classifyError(new Error(e.stderr?.toString?.() || e.message), 'npm run blockchain:start');
+      printCliError(err, verbose);
+      process.exit(err.exitCode);
+    }
+  } else {
+    fmt.ok('Proof Server already running.');
+  }
+
+  fmt.info('Waiting for health check...');
+  const timeoutMs = 90000;
+  const pollIntervalMs = 2000;
+  let waited = 0;
+  let healthy = checkRpc() && checkIndexer() && checkProofServer();
+  while (!healthy && waited < timeoutMs) {
+    await sleep(pollIntervalMs);
+    waited += pollIntervalMs;
+    healthy = checkRpc() && checkIndexer() && checkProofServer();
+  }
+
+  if (!healthy) {
+    fmt.warn('Services did not become healthy in time — attempting to restart the Proof Server once...');
+    const { recovered } = tryRestartContainer(composeFile, 'proof-server');
+    if (recovered) {
+      waited = 0;
+      healthy = checkRpc() && checkIndexer() && checkProofServer();
+      while (!healthy && waited < timeoutMs) {
+        await sleep(pollIntervalMs);
+        waited += pollIntervalMs;
+        healthy = checkRpc() && checkIndexer() && checkProofServer();
+      }
+    }
+  }
+
+  if (!healthy) {
+    printCliError(
+      new ProofServerError({
+        title: 'Proof Server Failed To Start',
+        whatHappened:
+          'One or more of node/indexer/proof-server did not become healthy in time, and an automatic restart did not fix it.\n\nPossible causes: Docker has insufficient memory, a required port is already in use, or a container failed to initialize.',
+        howToFix: `Inspect logs and reset:\n\n  docker compose -f ${composeFile} logs\n  npm run blockchain:reset\n  npm run blockchain:start\n\nIf that doesn't help, persisted chain/indexer data may be corrupted:\n\n  npm run blockchain:reset -- --hard\n  npm run blockchain:start`,
+      }),
+      verbose,
+    );
+    process.exit(1);
+  }
+  fmt.ok('Proof Server is healthy.');
+
+  fmt.section('\u{1F310} Midnight Services');
+  fmt.ok('Proof Server');
+  fmt.ok('Indexer reachable');
+  fmt.ok('RPC reachable');
+}

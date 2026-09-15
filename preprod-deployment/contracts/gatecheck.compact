@@ -1,0 +1,137 @@
+// ============================================================================
+// gatecheck.compact
+// ----------------------------------------------------------------------------
+// PRIVACY MODEL
+//
+//   PUBLIC (on ledger, anyone can read):
+//     - allowlistRoot   : the Merkle root committing to the full set of
+//                         eligible members. The set itself is never
+//                         published in full — only its root hash.
+//     - nullifiers      : a set of spent nullifiers, one per member who has
+//                         already claimed access. Prevents a member from
+//                         claiming access twice, without ever linking two
+//                         claims to the same identity.
+//     - issuer          : the address allowed to (re)publish the allowlist.
+//     - accessGranted   : a public counter of total successful gate-checks
+//                         (for the "public dashboard" view only).
+//
+//   PRIVATE (witness data, supplied off-chain, never written to the ledger):
+//     - secretKey       : the member's private identity secret.
+//     - merklePath      : the sibling hashes proving the member's leaf is
+//                         included under allowlistRoot.
+//     - pathDirections  : left/right directions for each level of the path.
+//
+//   WHAT THE CIRCUIT PROVES (and nothing more):
+//     "I know a secretKey whose derived leaf is included in the tree
+//      committed to by allowlistRoot, and I have not used this secretKey
+//      to pass the gate before."
+//
+//   The verifier learns only: valid member / not yet used -> ACCESS GRANTED.
+//   It never learns which leaf, which wallet, or the member's real identity.
+// ============================================================================
+
+pragma language_version >= 0.15;
+
+import CompactStandardLibrary;
+
+// Depth of the allowlist Merkle tree. 2^20 ≈ 1,048,576 possible members —
+// generous headroom for an MVP allowlist while keeping proving time low.
+
+export ledger allowlistRoot: Bytes<32>;
+export ledger issuer: ZswapCoinPublicKey;
+export ledger accessGranted: Counter;
+export ledger nullifiers: Set<Bytes<32>>;
+
+// ----------------------------------------------------------------------------
+// witness declarations — supplied privately by the caller, never on-chain
+// ----------------------------------------------------------------------------
+witness secretKey(): Bytes<32>;
+witness merklePath(): Vector<5, Bytes<32>>;
+witness pathDirections(): Vector<5, Boolean>;
+
+// ----------------------------------------------------------------------------
+// constructor — deploys the contract with the issuer's initial root
+// ----------------------------------------------------------------------------
+constructor(initialRoot: Bytes<32>) {
+  allowlistRoot = disclose(initialRoot);
+  issuer = ownPublicKey();
+}
+
+// ----------------------------------------------------------------------------
+// publishAllowlist — issuer rotates the committed root (e.g. new cohort,
+// revoke + reissue). Only callable by the address that deployed the
+// contract. Old nullifiers stay valid so history can't be replayed across
+// roots either.
+// ----------------------------------------------------------------------------
+export circuit publishAllowlist(newRoot: Bytes<32>): [] {
+  assert(ownPublicKey() == issuer, "only the issuer may update the allowlist");
+  allowlistRoot = disclose(newRoot);
+}
+
+// ----------------------------------------------------------------------------
+// leafOf — derives a member's leaf commitment from their secret key.
+// Using a hash-of-secret rather than a raw public key means the leaf
+// reveals nothing about the member's wallet or identity.
+// ----------------------------------------------------------------------------
+circuit leafOf(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "gatecheck:leaf"), secret]);
+}
+
+// ----------------------------------------------------------------------------
+// nullifierOf — deterministic, one-way tag derived from the same secret.
+// Same secret -> same nullifier every time, but the nullifier itself does
+// not reveal the secret or the leaf.
+// ----------------------------------------------------------------------------
+circuit nullifierOf(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "gatecheck:null"), secret]);
+}
+
+// ----------------------------------------------------------------------------
+// merkleRootFrom — recomputes a candidate root from a leaf + private path.
+// ----------------------------------------------------------------------------
+circuit merkleRootFrom(
+  leaf: Bytes<32>,
+  path: Vector<5, Bytes<32>>,
+  directions: Vector<5, Boolean>
+): Bytes<32> {
+  const h0 = directions[0] ? persistentHash<Vector<2, Bytes<32>>>([path[0], leaf]) : persistentHash<Vector<2, Bytes<32>>>([leaf, path[0]]);
+  const h1 = directions[1] ? persistentHash<Vector<2, Bytes<32>>>([path[1], h0]) : persistentHash<Vector<2, Bytes<32>>>([h0, path[1]]);
+  const h2 = directions[2] ? persistentHash<Vector<2, Bytes<32>>>([path[2], h1]) : persistentHash<Vector<2, Bytes<32>>>([h1, path[2]]);
+  const h3 = directions[3] ? persistentHash<Vector<2, Bytes<32>>>([path[3], h2]) : persistentHash<Vector<2, Bytes<32>>>([h2, path[3]]);
+  const h4 = directions[4] ? persistentHash<Vector<2, Bytes<32>>>([path[4], h3]) : persistentHash<Vector<2, Bytes<32>>>([h3, path[4]]);
+  return h4;
+}
+
+// ----------------------------------------------------------------------------
+// checkAccess — the core privacy-preserving entry point.
+//
+//   1. Rebuilds the Merkle root from the caller's private secret + path.
+//   2. Asserts it matches the public allowlistRoot (proves membership).
+//   3. Asserts the derived nullifier hasn't been spent (proves "first use").
+//   4. Records the nullifier and increments the public counter.
+//
+// Nothing about *which* member this is, or their wallet, ever touches the
+// public ledger — only "a valid member checked in" does.
+// ----------------------------------------------------------------------------
+export circuit checkAccess(): [] {
+  const secret = secretKey();
+  const leaf = leafOf(secret);
+  const path = merklePath();
+  const directions = pathDirections();
+
+  const candidateRoot = merkleRootFrom(leaf, path, directions);
+  assert(candidateRoot == allowlistRoot, "not a member of the current allowlist");
+
+  const nullifier = nullifierOf(secret);
+  assert(!nullifiers.member(disclose(nullifier)), "this membership has already been used");
+
+  nullifiers.insert(disclose(nullifier));
+  accessGranted.increment(1);
+}
+
+// ----------------------------------------------------------------------------
+// publicStats — convenience read-only view for the frontend dashboard.
+// ----------------------------------------------------------------------------
+export circuit publicStats(): [Bytes<32>, Uint<64>] {
+  return [allowlistRoot, accessGranted as Uint<64>];
+}

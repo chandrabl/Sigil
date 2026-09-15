@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  COMPACT_VERSION: "0.31.0"
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  #v6.0.3
+
+      - name: Setup Compact Compiler
+        uses: midnightntwrk/setup-compact-action@836895c8fffbbea6bd986af2b17e8941ff29d1f8
+        with:
+          compact-version: ${{ env.COMPACT_VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  #v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      # A bug in npm optional dependencies fails the build, which is fixed in npm 11 or later
+      # but the setup-node action isn't using a newer version of npm yet
+      # See https://github.com/npm/cli/issues/4828
+      - name: Update NPM
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      # We use --legacy-peer-deps because as of v3.4.1 vite-plugin-wasm doesn't play well with vite 7
+      # So this allows them to be installed regardless; They *have* implemented support, they just haven't published a release yet
+      # https://github.com/Menci/vite-plugin-wasm/pull/73
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Lint, typecheck, build, and test contracts
+        working-directory: contracts
+        run: npm run ci
+
+      - name: Lint, typecheck, and build api
+        working-directory: api
+        run: npm run ci
+
+      - name: Lint, typecheck, and build cli
+        working-directory: cli
+        run: npm run ci
+
+      - name: Lint, typecheck, and build web
+        working-directory: web
+        env:
+          NEXT_PUBLIC_NETWORK_ID: preprod
+        run: npm run ci
+
+      - name: Test web
+        working-directory: web
+        run: npm run test
+
+      - name: Validate setup.sh (bash syntax only)
+        if: runner.os != 'Windows'
+        run: bash -n setup.sh
+
+      - name: Validate .mjs scripts (syntax check)
+        shell: bash
+        run: |
+          set -euo pipefail
+          find infra/scripts -name '*.mjs' -print0 | xargs -0 -n1 node --check
+
+      - name: Upload build output on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  #v4.6.2
+        with:
+          name: build-output-${{ matrix.os }}
+          path: |
+            contracts/dist
+            contracts/src/managed
+            api/dist
+            cli/dist
+            web/.next
+          if-no-files-found: ignore
+          retention-days: 5
+
+  integration:
+    name: integration (docker)
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  #v6.0.3
+
+      - name: Install Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  #v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Update NPM
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      # Runs the exact onboarding path a new user hits (npm install, env file, contract/CLI
+      # build, Compact toolchain install, Docker image pull/up, health checks) instead of
+      # reimplementing those steps by hand here — a script-level regression (e.g. a broken
+      # installer URL) only shows up in CI if CI actually runs the script.
+      - name: Run ./setup.sh (fresh onboarding path)
+        run: ./setup.sh
+
+      - name: Deploy to local network
+        run: npm run deploy -- --network local
+
+      - name: Run doctor (environment + service health checks)
+        run: npm run doctor
+
+      - name: Reset blockchain (soft, then --hard), verify idempotent
+        run: |
+          npm run blockchain:reset
+          npm run blockchain:reset
+          npm run blockchain:reset -- --hard
+          npm run blockchain:reset -- --hard
+
+      # Reset-then-restart is the recovery path an onboarding user hits when the local stack
+      # gets into a bad state; doctor must come back healthy afterward with no manual cleanup.
+      - name: Restart after reset and verify recovery
+        run: |
+          npm run blockchain:start
+          npm run doctor
+
+      # A --hard reset drops the genesis chain state the local deploy relies on, so this is
+      # the onboarding recovery path end to end: reset, restart, deploy again cleanly.
+      - name: Repeat deploy after hard reset
+        run: npm run deploy -- --network local
+
+      - name: Stop local blockchain
+        if: always()
+        run: npm run blockchain:stop
+
+      - name: Upload docker logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  #v4.6.2
+        with:
+          name: integration-logs
+          path: |
+            infra/docker/*.log
+          if-no-files-found: ignore
+          retention-days: 5

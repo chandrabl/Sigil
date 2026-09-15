@@ -1,0 +1,75 @@
+name: Deploy to Preprod
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'contracts/**'
+      - 'preprod-deployment/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          cd preprod-deployment
+          npm install
+          npm install --no-save tsx
+          node infra/scripts/patch-wallet-sdk.mjs
+
+      - name: Copy Contract
+        run: |
+          cp contracts/auction.compact preprod-deployment/contracts/src/bboard.compact
+
+      - name: Compile Contract
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.compact/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$HOME/.compact/bin:$PATH"
+          compact update 0.31.1 || compact update 0.31.0 || compact update
+          compact --version
+          cd preprod-deployment/contracts
+          compact compile src/bboard.compact ./src/managed/bboard
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Build Contract Bindings
+        run: |
+          cd preprod-deployment/contracts
+          npm run build
+          
+      - name: Increase swap space
+        run: |
+          sudo swapoff -a || true
+          sudo rm -f /swapfile /swapfile_extra || true
+          sudo fallocate -l 10G /swapfile_extra || sudo dd if=/dev/zero of=/swapfile_extra bs=1M count=10240
+          sudo chmod 600 /swapfile_extra
+          sudo mkswap /swapfile_extra
+          sudo swapon /swapfile_extra
+          free -h
+
+      - name: Deploy Contract
+        run: |
+          cd preprod-deployment/cli
+          npx tsx src/launcher/deploy-gatecheck.ts
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192 --expose-gc"
+          WALLET_SEED: ${{ secrets.WALLET_SEED }}
+
+      - name: Upload Deployment Info
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-info
+          path: |
+            preprod-deployment/cli/deployment.json
+            deployed_contract.json

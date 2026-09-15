@@ -1,0 +1,7 @@
+This directory is populated by `compactc` when you run:
+
+    npm run compact:compile
+
+It will contain the generated contract module, keys, and zkir artifacts
+used by the frontend and tests. It is intentionally empty in source
+control — see .gitignore.

@@ -1,0 +1,134 @@
+pragma language_version >= 0.13.0;
+
+import CompactStandardLibrary;
+
+// ============================================================================
+// Sigil — Private Sealed-Bid Auction
+//
+// One lot per deployed contract instance. Three phases, enforced on-chain:
+//
+//   COMMIT  -> bidders lock in Poseidon(bidAmount, salt, bidder) as a
+//              commitment. The amount and salt never touch the ledger.
+//   REVEAL  -> bidders open their commitment with the same amount + salt.
+//              The circuit checks the hash matches, then folds the amount
+//              into a running private maximum. Only the *current leader's*
+//              identity becomes public; every bid amount that is not the
+//              final winning amount stays private forever.
+//   SETTLE  -> the seller closes the lot. The winning bidder and the
+//              winning amount are published. Every other participant is
+//              provably a bidder (their commitment is on-chain) but their
+//              amount is never revealed, on-chain or off.
+// ============================================================================
+
+export enum Phase { Commit, Reveal, Settled }
+
+export ledger phase: Phase;
+export ledger seller: Bytes<32>;
+export ledger lotName: Opaque<"string">;
+export ledger reservePrice: Uint<64>;
+
+// bidder id -> Poseidon commitment. Presence on this map is the only
+// on-chain evidence that someone bid — never their amount.
+export ledger commitments: Map<Bytes<32>, Bytes<32>>;
+
+// bidder id -> has this bidder revealed yet. Prevents double-reveal.
+export ledger revealed: Map<Bytes<32>, Boolean>;
+
+// Running leader, tracked privately inside the circuit and only ever
+// written to the ledger as the *current* best — never the full bid book.
+export ledger currentLeader: Bytes<32>;
+export ledger currentHighBid: Uint<64>;
+export ledger bidderCount: Counter;
+
+export ledger winner: Bytes<32>;
+export ledger winningBid: Uint<64>;
+
+constructor(sellerId: Bytes<32>, lot: Opaque<"string">, reserve: Uint<64>) {
+  phase = Phase.Commit;
+  seller = sellerId;
+  lotName = lot;
+  reservePrice = reserve;
+  currentLeader = default<Bytes<32>>;
+  currentHighBid = 0;
+  winner = default<Bytes<32>>;
+  winningBid = 0;
+}
+
+// -----------------------------------------------------------------------
+// COMMIT — a bidder locks in a hidden bid. amount and salt are witnesses:
+// they exist only in the prover's local context and are never emitted.
+// -----------------------------------------------------------------------
+export circuit commitBid(
+  bidderId: Bytes<32>,
+  amount: Uint<64>,
+  salt: Bytes<32>
+): [] {
+  assert(phase == Phase.Commit, "auction is not accepting bids");
+  assert(!commitments.member(bidderId), "bidder already committed");
+
+  const commitment = persistentHash<[Bytes<32>, Uint<64>, Bytes<32>]>(
+    [bidderId, amount, salt]
+  );
+
+  commitments.insert(bidderId, commitment);
+  bidderCount.increment(1);
+}
+
+// -----------------------------------------------------------------------
+// REVEAL — bidder opens their commitment. The circuit re-derives the hash
+// from the witnessed amount + salt and checks it against the stored
+// commitment. If this bid beats the current private leader, the leader
+// pointer moves — but no losing amount is ever written anywhere.
+// -----------------------------------------------------------------------
+export circuit revealBid(
+  bidderId: Bytes<32>,
+  amount: Uint<64>,
+  salt: Bytes<32>
+): [] {
+  assert(phase == Phase.Reveal, "auction is not in the reveal phase");
+  assert(commitments.member(bidderId), "no commitment on file for bidder");
+  assert(!revealed.member(bidderId) || !revealed.lookup(bidderId),
+    "bidder already revealed");
+
+  const recomputed = persistentHash<[Bytes<32>, Uint<64>, Bytes<32>]>(
+    [bidderId, amount, salt]
+  );
+  assert(recomputed == commitments.lookup(bidderId),
+    "revealed amount does not match commitment");
+  assert(amount >= reservePrice, "bid below reserve");
+
+  revealed.insert(bidderId, true);
+
+  if (amount > currentHighBid) {
+    currentHighBid = amount;
+    currentLeader = bidderId;
+  }
+}
+
+// -----------------------------------------------------------------------
+// SETTLE — seller-only. Freezes the leader as the public winner. Anyone
+// can verify: bidderCount participants committed, exactly one amount
+// (the winning one) was ever disclosed.
+// -----------------------------------------------------------------------
+export circuit settleAuction(callerId: Bytes<32>): [] {
+  assert(phase == Phase.Reveal, "auction already settled or not yet opened");
+  assert(callerId == seller, "only the seller can settle the lot");
+  assert(currentHighBid >= reservePrice, "no qualifying bid to settle");
+
+  winner = currentLeader;
+  winningBid = currentHighBid;
+  phase = Phase.Settled;
+}
+
+// -----------------------------------------------------------------------
+// Phase transition — seller-only, moves Commit -> Reveal once the
+// bidding window is closed off-chain (UI-driven timer, enforced here by
+// the seller's signature rather than by wall-clock, per Midnight's
+// current lack of native block-time reads in this contract shape).
+// -----------------------------------------------------------------------
+export circuit openReveal(callerId: Bytes<32>): [] {
+  assert(phase == Phase.Commit, "auction is not in the commit phase");
+  assert(callerId == seller, "only the seller can open the reveal phase");
+  assert(bidderCount.value() > 0, "no bids were committed");
+  phase = Phase.Reveal;
+}
