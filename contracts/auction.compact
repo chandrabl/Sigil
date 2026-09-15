@@ -39,6 +39,7 @@ export ledger revealed: Map<Bytes<32>, Boolean>;
 export ledger currentLeader: Bytes<32>;
 export ledger currentHighBid: Uint<64>;
 export ledger bidderCount: Counter;
+export ledger hasBids: Boolean;
 
 export ledger winner: Bytes<32>;
 export ledger winningBid: Uint<64>;
@@ -50,6 +51,7 @@ constructor(sellerId: Bytes<32>, lot: Opaque<"string">, reserve: Uint<64>) {
   reservePrice = reserve;
   currentLeader = default<Bytes<32>>;
   currentHighBid = 0;
+  hasBids = false;
   winner = default<Bytes<32>>;
   winningBid = 0;
 }
@@ -71,6 +73,7 @@ export circuit commitBid(
   );
 
   commitments.insert(bidderId, commitment);
+  hasBids = true;
   bidderCount.increment(1);
 }
 
@@ -129,6 +132,6 @@ export circuit settleAuction(callerId: Bytes<32>): [] {
 export circuit openReveal(callerId: Bytes<32>): [] {
   assert(phase == Phase.Commit, "auction is not in the commit phase");
   assert(callerId == seller, "only the seller can open the reveal phase");
-  assert(bidderCount.value() > 0, "no bids were committed");
+  assert(hasBids, "no bids were committed");
   phase = Phase.Reveal;
 }
