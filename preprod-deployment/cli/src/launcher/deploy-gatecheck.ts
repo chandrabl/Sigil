@@ -20,7 +20,7 @@ import * as Rx from 'rxjs';
 
 async function main() {
   console.log("Starting deployment to Preprod...");
-  const seed = process.env.WALLET_SEED;
+  let seed = process.env.WALLET_SEED?.trim().replace(/^["']|["']$/g, '');
   if (!seed) throw new Error("WALLET_SEED environment variable is required");
   
   const config = new PreprodRemoteConfig();
