@@ -53,26 +53,40 @@ async function main() {
 
   if (nightBalance === 0n) {
     console.log("Wallet has 0 tNIGHT. Requesting funds from faucet...");
+    let faucetRetryTimer: NodeJS.Timeout | null = null;
     if (envConfiguration.faucet) {
+      const faucetClient = new FaucetClient(envConfiguration.faucet, logger);
       try {
-        await new FaucetClient(envConfiguration.faucet, logger).requestTokens(walletAddress);
+        await faucetClient.requestTokens(walletAddress);
         console.log("Faucet request sent successfully. Waiting for tokens...");
       } catch (e: any) {
         console.warn(`Faucet request warning: ${e.message}`);
       }
+
+      // Periodically request from faucet every 45s while waiting for block inclusion
+      faucetRetryTimer = setInterval(async () => {
+        try {
+          console.log("Pinging faucet for tokens...");
+          await faucetClient.requestTokens(walletAddress);
+        } catch {}
+      }, 45000);
     }
     
-    unshieldedState = await Rx.firstValueFrom(
-      walletProvider.wallet.unshielded.state.pipe(
-        Rx.throttleTime(5000),
-        Rx.tap((state) => {
-          const bal = state.balances[unshieldedToken().raw] ?? 0n;
-          console.log(`Waiting for tokens... current balance: ${bal} tNIGHT`);
-        }),
-        Rx.filter((state) => (state.balances[unshieldedToken().raw] ?? 0n) > 0n),
-        Rx.timeout(300000)
-      )
-    );
+    try {
+      unshieldedState = await Rx.firstValueFrom(
+        walletProvider.wallet.unshielded.state.pipe(
+          Rx.throttleTime(5000),
+          Rx.tap((state) => {
+            const bal = state.balances[unshieldedToken().raw] ?? 0n;
+            console.log(`Waiting for tokens... current balance: ${bal} tNIGHT`);
+          }),
+          Rx.filter((state) => (state.balances[unshieldedToken().raw] ?? 0n) > 0n),
+          Rx.timeout(600000)
+        )
+      );
+    } finally {
+      if (faucetRetryTimer) clearInterval(faucetRetryTimer);
+    }
     nightBalance = unshieldedState.balances[unshieldedToken().raw] ?? 0n;
     console.log(`Received funds! New balance: ${nightBalance} tNIGHT`);
   }
