@@ -10,7 +10,11 @@ export function OnChainActivity({ contractAddress }: { contractAddress?: string 
 
   const activeContract =
     contractAddress ||
-    "02005e8392a83f982cfba672808c4e4022a1f8bb2d2427a759be1c43f77977469a45";
+    "0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507";
+
+  const contractUrl = `https://preprod.midnightexplorer.com/contracts/${
+    activeContract.startsWith("0x") ? activeContract : "0x" + activeContract
+  }`;
 
   return (
     <div className="rounded-lg border border-ink-700 bg-ink-900/60 p-5 space-y-4">
@@ -24,7 +28,7 @@ export function OnChainActivity({ contractAddress }: { contractAddress?: string 
         <div className="flex items-center gap-2 text-xs">
           <span className="text-parchment-400 font-mono text-[11px]">Contract:</span>
           <a
-            href={`https://preprod.midnight.network/contract/${activeContract}`}
+            href={contractUrl}
             target="_blank"
             rel="noreferrer"
             className="font-mono text-[11px] text-brass-400 hover:text-brass-300 underline underline-offset-2 flex items-center gap-1"

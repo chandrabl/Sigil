@@ -10,9 +10,9 @@
 
 ## Contract Address
 
-| Network | Address                        |
-|---------|---------------------------------|
-| Preprod | `[REPLACE WITH YOUR DEPLOYED PREPROD CONTRACT ADDRESS]` |
+| Network | Address | Explorer |
+|---------|---------|----------|
+| Preprod | `0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507` | [View on Midnight Explorer ↗](https://preprod.midnightexplorer.com/contracts/0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507) |
 
 ## What This Does
 

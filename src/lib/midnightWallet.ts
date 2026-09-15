@@ -248,10 +248,11 @@ class MidnightWalletManager {
       txId = Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
     }
 
+    const formattedTx = txId.startsWith("0x") ? txId : `0x${txId}`;
     const result: OnChainTxResult = {
-      txId,
+      txId: formattedTx,
       action,
-      explorerUrl: `https://preprod.midnight.network/tx/${txId}`,
+      explorerUrl: `https://preprod.midnightexplorer.com/tx/${formattedTx}`,
       blockTimestamp: new Date().toLocaleTimeString(),
       status: "submitted",
     };
