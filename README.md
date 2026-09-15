@@ -8,11 +8,16 @@
 
 [REPLACE WITH YOUR DEPLOYED FRONTEND URL]
 
-## Contract Address
+## Deployed Contract (Midnight Preprod)
 
-| Network | Address | Explorer |
-|---------|---------|----------|
-| Preprod | `0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507` | [View on Midnight Explorer ↗](https://preprod.midnightexplorer.com/contracts/0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507) |
+- **Contract Address:** [`0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507`](https://preprod.midnightexplorer.com/contracts/0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507)
+- **Preprod Explorer:** [https://preprod.midnightexplorer.com/contracts/0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507](https://preprod.midnightexplorer.com/contracts/0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507)
+- **DUST Generation Tx:** [`0x00bd94e452256079a92bf00cab0899481fd6c6574a3638715d1cf792d23459358e`](https://preprod.midnightexplorer.com/tx/0x00bd94e452256079a92bf00cab0899481fd6c6574a3638715d1cf792d23459358e)
+
+| Network | Contract Address | Block Explorer |
+| :--- | :--- | :--- |
+| **Midnight Preprod** | `0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507` | [Open Contract on Midnight Explorer ↗](https://preprod.midnightexplorer.com/contracts/0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507) |
+
 
 ## What This Does
 

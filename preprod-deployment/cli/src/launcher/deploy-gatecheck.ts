@@ -166,18 +166,19 @@ async function main() {
         args: [sellerId, lotName, reservePrice]
     });
     
-    const contractAddress = deployed.deployTxData.public.contractAddress;
+    const formattedAddress = contractAddress.startsWith("0x") ? contractAddress : `0x${contractAddress}`;
+    const explorerUrl = `https://preprod.midnightexplorer.com/contracts/${formattedAddress}`;
     console.log("================================================================================");
     console.log("🎉 SUCCESS! CONTRACT DEPLOYED TO PREPROD!");
-    console.log("CONTRACT_ADDRESS=" + contractAddress);
-    console.log("Contract Address:", contractAddress);
-    console.log("Explorer:", `https://preprod.midnight.network/contract/${contractAddress}`);
+    console.log("CONTRACT_ADDRESS=" + formattedAddress);
+    console.log("Contract Address:", formattedAddress);
+    console.log("Explorer:", explorerUrl);
     console.log("================================================================================");
 
     const deploymentInfo = {
       network: "preprod",
-      contractAddress,
-      explorerUrl: `https://preprod.midnight.network/contract/${contractAddress}`,
+      contractAddress: formattedAddress,
+      explorerUrl,
       indexer: envConfiguration.indexer,
       node: envConfiguration.node,
       deployedAt: new Date().toISOString(),

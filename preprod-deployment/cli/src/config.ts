@@ -137,7 +137,7 @@ export class PreprodRemoteConfig implements Config {
   logDir = path.resolve(currentDir, '..', 'logs', 'preprod-remote', `${new Date().toISOString()}.log`);
   zkConfigPath = path.resolve(currentDir, '..', '..', 'contracts', 'src', 'managed', 'bboard');
   generateDust = true;
-  explorerUrl = 'https://explorer.preprod.midnight.network/contracts/stream/{contractAddress}';
+  explorerUrl = 'https://preprod.midnightexplorer.com/contracts/{contractAddress}';
 }
 
 export class PreviewTestEnvironment extends RemoteTestEnvironment {

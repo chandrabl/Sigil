@@ -1,9 +1,10 @@
 {
   "network": "preprod",
-  "contractAddress": "75d96da09aa9414d760770592351106e8473e6cc1d65edf73c2e39d37ba657d5",
-  "explorerUrl": "https://preprod.midnight.network/contract/75d96da09aa9414d760770592351106e8473e6cc1d65edf73c2e39d37ba657d5",
+  "contractAddress": "0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507",
+  "explorerUrl": "https://preprod.midnightexplorer.com/contracts/0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507",
   "indexer": "https://indexer.preprod.midnight.network/api/v4/graphql",
   "node": "https://rpc.preprod.midnight.network",
-  "proofServer": "https://preprod.midnight.network",
-  "deployedAt": "2026-09-14T09:59:32.000Z"
+  "faucet": "https://midnight-tmnight-preprod.nethermind.dev/",
+  "txId": "00bd94e452256079a92bf00cab0899481fd6c6574a3638715d1cf792d23459358e",
+  "deployedAt": "2026-09-15T07:23:43.938Z"
 }
