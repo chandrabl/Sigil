@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "compact:compile": "compactc compile contracts/auction.compact managed/auction",
+    "compact:compile": "npx @midnight-ntwrk/compactc compile contracts/auction.compact managed/auction",
     "postinstall": "node patch-sdk.cjs"
   },
   "dependencies": {
