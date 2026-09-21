@@ -11,6 +11,7 @@ export interface MyBidRecord {
 
 export function useAuction(lotName: string, reservePrice: bigint) {
   const { api } = useLaceWallet();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [client, setClient] = useState<any>(null);
   const [state, setState] = useState({
     lotName,
@@ -23,7 +24,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
     currentHighBid: 0n,
     winner: "",
     winningBid: 0n,
-    bidderCount: 0n,
+    bidderCount: 0,
   });
   const [myBid, setMyBid] = useState<MyBidRecord | null>(null);
   const [pending, setPending] = useState(false);
@@ -45,7 +46,8 @@ export function useAuction(lotName: string, reservePrice: bigint) {
     return Buffer.from(array).toString("hex") as Hex32;
   };
 
-  const executeTx = async (label: string, callFn: () => Promise<any>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const executeTx = useCallback(async (label: string, callFn: () => Promise<any>) => {
     if (!client) throw new Error("Midnight SDK is not initialized yet.");
     setPending(true);
     setLastError(null);
@@ -64,6 +66,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         setTimeout(() => reject(new Error("On-chain verification timed out.")), 60000)
       );
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tx: any = await Promise.race([callPromise, earlyReturnPromise, timeoutPromise]);
       
       const submittedId = getLastSubmittedTxId();
@@ -78,7 +81,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
     } finally {
       setPending(false);
     }
-  };
+  }, [client]);
 
   const commit = useCallback(
     async (bidderId: Hex32, amount: bigint) => {
@@ -94,13 +97,13 @@ export function useAuction(lotName: string, reservePrice: bigint) {
       setState((prev) => {
         const next = { ...prev };
         next.commitments.set(bidderId, "committed");
-        next.bidderCount = next.bidderCount + 1n;
+        next.bidderCount = next.bidderCount + 1;
         return next;
       });
 
       return { amount, salt };
     },
-    [client]
+    [client, executeTx]
   );
 
   const openReveal = useCallback(
@@ -111,7 +114,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
       );
       setState((prev) => ({ ...prev, phase: Phase.Reveal }));
     },
-    [client]
+    [client, executeTx]
   );
 
   const reveal = useCallback(
@@ -137,7 +140,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         return next;
       });
     },
-    [client, myBid]
+    [client, myBid, executeTx]
   );
 
   const settle = useCallback(
@@ -156,7 +159,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         };
       });
     },
-    [client]
+    [client, executeTx]
   );
 
   const isSeller = useCallback(

@@ -4,7 +4,7 @@ dist-ssr/
 *.local
 
 # Midnight compiler output — regenerate with `npm run compact:compile`
-managed/*
+# managed/*
 !managed/.gitkeep
 
 # Editor / OS
