@@ -137,7 +137,6 @@ export function useAuction(lotName: string, reservePrice: bigint) {
 
       return { amount, salt };
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, executeTx]
   );
 
@@ -149,7 +148,6 @@ export function useAuction(lotName: string, reservePrice: bigint) {
       );
       setState((prev) => ({ ...prev, phase: Phase.Reveal }));
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, executeTx]
   );
 
@@ -176,7 +174,6 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         return next;
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, myBid, executeTx]
   );
 
@@ -196,7 +193,6 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         };
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, executeTx]
   );
 
