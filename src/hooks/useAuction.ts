@@ -91,7 +91,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
     } finally {
       setPending(false);
     }
-  }, [client]);
+  }, [client, api]);
 
   const commit = useCallback(
     async (bidderId: Hex32, amount: bigint) => {
