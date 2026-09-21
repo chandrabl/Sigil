@@ -73,3 +73,4 @@ jobs:
           path: |
             preprod-deployment/cli/deployment.json
             deployed_contract.json
+            preprod-deployment/contracts/dist/managed/
