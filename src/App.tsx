@@ -12,30 +12,39 @@ import { SellerControls } from "./components/SellerControls";
 import { OnChainActivity } from "./components/OnChainActivity";
 import { deriveBidderId } from "./hooks/useWallet";
 import { useAuction } from "./hooks/useAuction";
+import { useWallet } from "./hooks/useWallet";
 
 export const CONTRACT_ADDRESS = "0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507";
 const LOT_NAME = "1967 Gibson SG — Cherry Red, Original Case";
 const RESERVE = 500n;
 
 export default function App() {
+  const wallet = useWallet();
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [bidderId, setBidderId] = useState<string | null>(null);
 
   const auction = useAuction(LOT_NAME, RESERVE);
 
+  // Prefer coinPublicKey (real on-chain identity from wallet) as bidderId.
+  // Fall back to SHA-256 derivation for backward compatibility.
   useEffect(() => {
-    if (!walletAddress) {
+    const addr = wallet.coinPublicKey || walletAddress;
+    if (!addr) {
       setBidderId(null);
       return;
     }
-    let cancelled = false;
-    deriveBidderId(walletAddress).then((id) => {
-      if (!cancelled) setBidderId(id);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [walletAddress]);
+    // Use coinPublicKey directly if it looks like a real key (long hex),
+    // otherwise derive via SHA-256
+    if (wallet.coinPublicKey && wallet.coinPublicKey.length > 30) {
+      setBidderId(wallet.coinPublicKey);
+    } else {
+      let cancelled = false;
+      deriveBidderId(addr).then((id) => {
+        if (!cancelled) setBidderId(id);
+      });
+      return () => { cancelled = true; };
+    }
+  }, [wallet.coinPublicKey, walletAddress]);
 
   const iAmSeller = auction.isSeller(bidderId);
   const hasRevealed = bidderId ? auction.state.revealed.has(bidderId) : false;
@@ -65,21 +74,31 @@ export default function App() {
 
       {auction.lastTx && (
         <div className="pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded border border-moss-500/40 bg-moss-500/10 p-3 text-xs text-moss-300">
+          <div className="flex flex-col gap-2 rounded border border-moss-500/40 bg-moss-500/10 p-3 text-xs text-moss-300">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-moss-400 animate-pulse" />
               <span>
-                <strong>{auction.lastTx.action}</strong> submitted successfully to Midnight Preprod!
+                <strong>{auction.lastTx.action}</strong> submitted to Midnight Preprod!
               </span>
             </div>
-            <a
-              href={auction.lastTx.explorerUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center font-medium underline underline-offset-2 text-moss-200 hover:text-white"
-            >
-              Verify on Midnight Block Explorer ↗
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={auction.lastTx.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 font-medium underline underline-offset-2 text-moss-200 hover:text-white"
+              >
+                ⚡ Verify on 1AM Explorer ↗
+              </a>
+              <a
+                href={auction.lastTx.midnightExplorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 font-medium underline underline-offset-2 text-moss-300 hover:text-white"
+              >
+                🌙 Midnight Explorer ↗
+              </a>
+            </div>
           </div>
         </div>
       )}
@@ -93,7 +112,7 @@ export default function App() {
       {!bidderId && (
         <div className="pb-6">
           <StatusBanner tone="info">
-            Connect a Midnight wallet (Lace or 1AM) to seal a bid. You will be prompted for an interactive signature authorization popup to authenticate on-chain.
+            Connect a Midnight wallet (1AM or Lace) to seal a bid. Your wallet extension will open an approval popup — no DUST is spent on the signature itself.
           </StatusBanner>
         </div>
       )}

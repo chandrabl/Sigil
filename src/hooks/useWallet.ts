@@ -1,6 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
-import { midnightWallet, type MidnightWalletState } from "../lib/midnightWallet";
+import {
+  useLaceWallet,
+  type WalletState as LaceWalletState,
+  type WalletId,
+} from "./useLaceWallet";
+import { midnightWallet } from "../lib/midnightWallet";
 
+export type { WalletId };
+
+/**
+ * WalletStatus values exposed to the UI.
+ *
+ * "not-installed"     — no window.midnight extension detected
+ * "disconnected"      — detected but not connected
+ * "connecting"        — provider.connect() in progress (wallet popup open)
+ * "awaiting-signature"— (legacy, maps to connecting for back-compat)
+ * "connected"         — live session, address available
+ * "denied"            — user rejected or error
+ */
 export type WalletStatus =
   | "not-installed"
   | "disconnected"
@@ -12,21 +29,25 @@ export type WalletStatus =
 export interface WalletState {
   status: WalletStatus;
   address: string | null;
+  coinPublicKey: string | null;
   walletName: string | null;
+  walletId: string | null;
   signature: string | null;
   networkId: string;
   error: string | null;
-  promptSignatureModal: boolean;
+  /** Whether to show the wallet chooser modal */
+  showWalletModal: boolean;
+  availableWallets: LaceWalletState["availableWallets"];
   connect: (walletId?: string) => Promise<void>;
-  confirmSignature: () => Promise<void>;
-  cancelSignature: () => void;
   disconnect: () => void;
+  openWalletModal: () => void;
+  closeWalletModal: () => void;
+  refreshAvailableWallets: () => LaceWalletState["availableWallets"];
 }
 
 /**
- * bidderId used on-chain is derived from the connected wallet address, not
- * the raw address itself, so the UI never has to reason about the two
- * separately.
+ * Derives a deterministic bidderId from a wallet address using SHA-256.
+ * This is used as the on-chain identity for commit/reveal operations.
  */
 export async function deriveBidderId(address: string): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -38,65 +59,86 @@ export async function deriveBidderId(address: string): Promise<string> {
     .join("");
 }
 
+/**
+ * Main wallet hook — wraps useLaceWallet and adapts its state into the
+ * WalletStatus type the existing UI components expect, while also
+ * synchronising the connected provider into the midnightWallet singleton
+ * so useAuction.ts can call signAndSubmitTx().
+ */
 export function useWallet(): WalletState {
-  const [walletState, setWalletState] = useState<MidnightWalletState>(() =>
-    midnightWallet.getState()
-  );
-  const [status, setStatus] = useState<WalletStatus>("disconnected");
-  const [promptSignatureModal, setPromptSignatureModal] = useState(false);
-  const [pendingWalletId, setPendingWalletId] = useState<string | undefined>(undefined);
+  const lace = useLaceWallet();
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
-  useEffect(() => {
-    const unsub = midnightWallet.subscribe((s) => {
-      setWalletState(s);
-      if (s.isConnected) {
-        setStatus("connected");
-      } else if (s.error) {
-        setStatus("denied");
-      } else {
-        setStatus("disconnected");
-      }
-    });
-    return unsub;
-  }, []);
-
-  const connect = useCallback(async (walletId?: string) => {
-    setPendingWalletId(walletId);
-    setPromptSignatureModal(true);
-    setStatus("awaiting-signature");
-  }, []);
-
-  const confirmSignature = useCallback(async () => {
-    setStatus("connecting");
-    setPromptSignatureModal(false);
-    try {
-      await midnightWallet.connect(pendingWalletId);
-    } catch {
-      setStatus("denied");
+  // Map useLaceWallet status → legacy WalletStatus
+  const status: WalletStatus = (() => {
+    switch (lace.status) {
+      case "connected":
+        return "connected";
+      case "connecting":
+        return "connecting";
+      case "error":
+        return "denied";
+      case "unavailable":
+        return "not-installed";
+      default:
+        return "disconnected";
     }
-  }, [pendingWalletId]);
+  })();
 
-  const cancelSignature = useCallback(() => {
-    setPromptSignatureModal(false);
-    setStatus("disconnected");
+  // Sync the connected provider into the midnightWallet singleton so
+  // signAndSubmitTx() gets the live API object with submitTransaction.
+  useEffect(() => {
+    if (
+      lace.status === "connected" &&
+      lace.api &&
+      lace.coinPublicKey &&
+      lace.address
+    ) {
+      midnightWallet.setConnectedProvider(
+        lace.api.provider,
+        lace.api.provider as unknown as import("../hooks/useLaceWallet").InjectedWalletProvider,
+        lace.connectedWalletName || "Midnight Wallet",
+        lace.connectedWalletId || "unknown",
+        lace.address,
+        lace.coinPublicKey
+      );
+    } else if (lace.status === "idle" || lace.status === "error") {
+      midnightWallet.disconnect();
+    }
+  }, [lace.status, lace.api, lace.coinPublicKey, lace.address, lace.connectedWalletName, lace.connectedWalletId]);
+
+  const openWalletModal = useCallback(() => {
+    lace.refreshAvailableWallets();
+    setShowWalletModal(true);
+  }, [lace]);
+
+  const closeWalletModal = useCallback(() => {
+    setShowWalletModal(false);
   }, []);
 
-  const disconnect = useCallback(() => {
-    midnightWallet.disconnect();
-    setStatus("disconnected");
-  }, []);
+  const connect = useCallback(
+    async (walletId?: string) => {
+      setShowWalletModal(false);
+      await lace.connect(walletId as WalletId | undefined);
+    },
+    [lace]
+  );
 
   return {
     status,
-    address: walletState.address,
-    walletName: walletState.walletName,
-    signature: walletState.signature,
-    networkId: walletState.networkId,
-    error: walletState.error,
-    promptSignatureModal,
+    address: lace.address,
+    coinPublicKey: lace.coinPublicKey,
+    walletName: lace.connectedWalletName,
+    walletId: lace.connectedWalletId,
+    signature: null,
+    networkId: "preprod",
+    error: lace.error,
+    showWalletModal,
+    availableWallets: lace.availableWallets,
     connect,
-    confirmSignature,
-    cancelSignature,
-    disconnect,
+    disconnect: lace.disconnect,
+    openWalletModal,
+    closeWalletModal,
+    refreshAvailableWallets: lace.refreshAvailableWallets,
   };
 }
