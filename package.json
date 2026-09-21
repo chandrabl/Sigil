@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "compact:compile": "compactc compile contracts/auction.compact managed/auction"
+    "compact:compile": "compactc compile contracts/auction.compact managed/auction",
+    "preview": "vite preview",
+    "postinstall": "node patch-sdk.js"
   },
   "dependencies": {
     "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
