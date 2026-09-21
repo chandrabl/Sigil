@@ -332,7 +332,7 @@ export class Contract {
     state_0.setOperation('revealBid', new __compactRuntime.ContractOperation());
     state_0.setOperation('settleAuction', new __compactRuntime.ContractOperation());
     state_0.setOperation('openReveal', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0, constructorContext_0.initialPrivateState);
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
@@ -988,6 +988,22 @@ export class Contract {
   }
 }
 export function ledger(stateOrChargedState) {
+  if (!stateOrChargedState || !stateOrChargedState.state) {
+    return {
+      phase: 0,
+      seller: new Uint8Array(32),
+      lotName: "",
+      reservePrice: 0n,
+      commitments: { isEmpty: () => true, size: () => 0n, member: () => false, lookup: () => new Uint8Array(32), [Symbol.iterator]: function*() {} },
+      revealed: { isEmpty: () => true, size: () => 0n, member: () => false, lookup: () => false, [Symbol.iterator]: function*() {} },
+      currentLeader: new Uint8Array(32),
+      currentHighBid: 0n,
+      bidderCount: 0n,
+      hasBids: false,
+      winner: new Uint8Array(32),
+      winningBid: 0n,
+    };
+  }
   const state = stateOrChargedState instanceof __compactRuntime.StateValue ? stateOrChargedState : stateOrChargedState.state;
   const chargedState = stateOrChargedState instanceof __compactRuntime.StateValue ? new __compactRuntime.ChargedState(stateOrChargedState) : stateOrChargedState;
   const context = {

@@ -3,7 +3,7 @@
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
-import { ContractState, emptyZswapLocalState } from "@midnight-ntwrk/compact-runtime";
+import { ContractState, emptyZswapLocalState, ContractOperation } from "@midnight-ntwrk/compact-runtime";
 import { Contract } from "../../managed/auction/contract/index.js";
 import { fromHex, toHex } from "@midnight-ntwrk/midnight-js-protocol/compact-runtime";
 import { Binding, Proof, SignatureEnabled, Transaction } from "@midnight-ntwrk/midnight-js-protocol/ledger";
@@ -76,24 +76,23 @@ export async function createMidnightProviders(api: any) {
 
   const base: any = indexerPublicDataProvider(indexerUri, indexerWsUri);
 
+
+
   let cachedContractState: ContractState | null = null;
   const buildFreshContractState = async (): Promise<ContractState> => {
     if (cachedContractState) return cachedContractState;
     try {
-      const dummyContract = new Contract({});
-      const res = await (dummyContract as any).initialState({
-        initialPrivateState: {},
-        initialZswapLocalState: emptyZswapLocalState(new Uint8Array(32) as any),
-      }, new Uint8Array(32), "", 0n);
-      const state: ContractState = res.currentContractState;
+      const state = new ContractState();
+      const operations = ["commitBid", "revealBid", "settleAuction", "openReveal"];
+      for (const id of operations) {
+        (state as any).setOperation(id, new (ContractOperation as any)());
+      }
       injectVerifierKeys(state);
       cachedContractState = state;
       return state;
     } catch (e) {
-      const empty = new ContractState();
-      injectVerifierKeys(empty);
-      cachedContractState = empty;
-      return empty;
+      console.error(e);
+      throw e;
     }
   };
 
