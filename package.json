@@ -13,7 +13,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "compact:compile": "compactc compile contracts/auction.compact managed/auction",
     "preview": "vite preview",
-    "postinstall": "node patch-sdk.js"
+    "postinstall": "node patch-sdk.cjs"
   },
   "dependencies": {
     "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
