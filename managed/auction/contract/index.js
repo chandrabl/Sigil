@@ -162,6 +162,7 @@ export class Contract {
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
+            initialQueryContext: _cc ? _cc.initialQueryContext : (context.initialQueryContext || contextOrig_0.initialQueryContext),
             finalQueryContext: _qc,
             publicTranscript: partialProofData.publicTranscript,
             input: partialProofData.input,
@@ -243,6 +244,7 @@ export class Contract {
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
+            initialQueryContext: _cc ? _cc.initialQueryContext : (context.initialQueryContext || contextOrig_0.initialQueryContext),
             finalQueryContext: _qc,
             publicTranscript: partialProofData.publicTranscript,
             input: partialProofData.input,
@@ -306,6 +308,7 @@ export class Contract {
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
+            initialQueryContext: _cc ? _cc.initialQueryContext : (context.initialQueryContext || contextOrig_0.initialQueryContext),
             finalQueryContext: _qc,
             publicTranscript: partialProofData.publicTranscript,
             input: partialProofData.input,
@@ -369,6 +372,7 @@ export class Contract {
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
+            initialQueryContext: _cc ? _cc.initialQueryContext : (context.initialQueryContext || contextOrig_0.initialQueryContext),
             finalQueryContext: _qc,
             publicTranscript: partialProofData.publicTranscript,
             input: partialProofData.input,
