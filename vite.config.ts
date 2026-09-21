@@ -11,4 +11,7 @@ export default defineConfig({
     environment: "node",
     globals: false,
   },
+  resolve: {
+    dedupe: ["@midnight-ntwrk/compact-runtime"],
+  },
 });
