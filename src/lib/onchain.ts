@@ -233,12 +233,11 @@ export async function createMidnightProviders(api: any) {
           if (typeof api.balanceUnsealedTransaction === "function") {
             try {
               const received = await api.balanceUnsealedTransaction(serializedTx);
-              return Transaction.deserialize<SignatureEnabled, Proof, Binding>(
-                "signature",
-                "proof",
-                "binding",
-                fromHex(received.tx),
-              );
+              // Mock a FinalizedTransaction that just returns the balanced bytes directly
+              // This bypasses deserialization errors if the wallet uses v12 format and SDK uses v9
+              return {
+                serialize: () => fromHex(received.tx)
+              } as unknown as FinalizedTransaction;
             } catch (walletBalErr) {
               console.error('Wallet balanceUnsealedTransaction failed:', walletBalErr);
               throw walletBalErr;
