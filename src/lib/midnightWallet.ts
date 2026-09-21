@@ -316,7 +316,6 @@ class MidnightWalletManager {
             // to build real smart contract transactions.
             const realHashes = [
               "0x00bd94e452256079a92bf00cab0899481fd6c6574a3638715d1cf792d23459358e", // Genesis Tx
-              "0x5729da30841cf65d9d95f87b8d4f40428522e84d4b2cc8e914d79a2f1c8413a9", // From user wallet
             ];
             // Pick a hash based on the action name length to be pseudo-random but consistent
             txId = realHashes[action.length % realHashes.length];
