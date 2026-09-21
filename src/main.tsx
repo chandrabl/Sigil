@@ -14,7 +14,7 @@ if (typeof window !== "undefined") {
 }
 
 // Must be called before ANY Midnight SDK wallet or contract operation
-setNetworkId("TestNet");
+setNetworkId("preprod");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
