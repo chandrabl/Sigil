@@ -14,7 +14,7 @@ import { blake2b } from "@noble/hashes/blake2.js";
 import { CompiledContract } from "@midnight-ntwrk/midnight-js-protocol/compact-js";
 import { findDeployedContract } from "@midnight-ntwrk/midnight-js-contracts";
 
-export const CONTRACT_ADDRESS = "0x61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507";
+export const CONTRACT_ADDRESS = "61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507";
 
 let lastSubmittedTxId: string | null = null;
 export function getLastSubmittedTxId(): string | null {
