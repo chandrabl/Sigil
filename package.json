@@ -14,8 +14,20 @@
     "compact:compile": "compactc compile contracts/auction.compact managed/auction"
   },
   "dependencies": {
+    "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
+    "@midnight-ntwrk/midnight-js-contracts": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-network-id": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-protocol": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-types": "^5.0.0-beta.8",
+    "@midnight-ntwrk/midnight-js-utils": "^5.0.0-beta.8",
+    "fp-ts": "^2.16.11",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
