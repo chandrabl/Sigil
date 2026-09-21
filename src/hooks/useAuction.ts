@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getContractClient, getLastSubmittedTxId, resetLastSubmittedTxId } from "../lib/onchain";
 import { type Hex32, Phase } from "../lib/auctionLogic";
 import { useLaceWallet } from "./useLaceWallet";
-import { fromHex, toHex } from "@midnight-ntwrk/midnight-js-protocol/compact-runtime";
+import { toHex } from "@midnight-ntwrk/midnight-js-protocol/compact-runtime";
 
 export interface MyBidRecord {
   amount: bigint;
@@ -47,6 +47,30 @@ export function useAuction(lotName: string, reservePrice: bigint) {
     const array = new Uint8Array(32);
     window.crypto.getRandomValues(array);
     return toHex(array) as Hex32;
+  };
+
+  /**
+   * Converts any hex string (wallet address, coinPublicKey, etc.) to a
+   * deterministic 32-byte Uint8Array suitable for Compact Bytes<32> params.
+   * Uses SHA-256 to ensure exactly 32 bytes regardless of input length.
+   */
+  const toBytes32 = async (hexOrStr: string): Promise<Uint8Array> => {
+    // Strip 0x prefix if present
+    const clean = hexOrStr.replace(/^0x/, "");
+    // If it's exactly 64 hex chars (32 bytes), decode directly
+    if (/^[0-9a-fA-F]{64}$/.test(clean)) {
+      const bytes = new Uint8Array(32);
+      for (let i = 0; i < 32; i++) {
+        bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+      }
+      return bytes;
+    }
+    // Otherwise SHA-256 hash it to get a stable 32-byte value
+    const buf = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(hexOrStr)
+    );
+    return new Uint8Array(buf);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -96,10 +120,10 @@ export function useAuction(lotName: string, reservePrice: bigint) {
   const commit = useCallback(
     async (bidderId: Hex32, amount: bigint) => {
       const salt = randomSalt();
-      const bidderIdBytes = fromHex(bidderId);
-      const saltBytes = fromHex(salt);
-      
-      await executeTx("Commit Sealed Bid", () => 
+      const bidderIdBytes = await toBytes32(bidderId);
+      const saltBytes = await toBytes32(salt);
+
+      await executeTx("Commit Sealed Bid", () =>
         client.callTx.commitBid(bidderIdBytes, amount, saltBytes)
       );
 
@@ -113,17 +137,19 @@ export function useAuction(lotName: string, reservePrice: bigint) {
 
       return { amount, salt };
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, executeTx]
   );
 
   const openReveal = useCallback(
     async (sellerId: Hex32) => {
-      const sellerIdBytes = fromHex(sellerId);
-      await executeTx("Open Reveal Phase", () => 
+      const sellerIdBytes = await toBytes32(sellerId);
+      await executeTx("Open Reveal Phase", () =>
         client.callTx.openReveal(sellerIdBytes)
       );
       setState((prev) => ({ ...prev, phase: Phase.Reveal }));
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, executeTx]
   );
 
@@ -133,10 +159,10 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         setLastError("No sealed bid found for this wallet in this session.");
         return;
       }
-      const bidderIdBytes = fromHex(bidderId);
-      const saltBytes = fromHex(myBid.salt);
-      
-      await executeTx("Reveal Sealed Bid", () => 
+      const bidderIdBytes = await toBytes32(bidderId);
+      const saltBytes = await toBytes32(myBid.salt);
+
+      await executeTx("Reveal Sealed Bid", () =>
         client.callTx.revealBid(bidderIdBytes, myBid.amount, saltBytes)
       );
 
@@ -150,13 +176,14 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         return next;
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, myBid, executeTx]
   );
 
   const settle = useCallback(
     async (sellerId: Hex32) => {
-      const sellerIdBytes = fromHex(sellerId);
-      await executeTx("Settle Auction Lot", () => 
+      const sellerIdBytes = await toBytes32(sellerId);
+      await executeTx("Settle Auction Lot", () =>
         client.callTx.settleAuction(sellerIdBytes)
       );
 
@@ -169,6 +196,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         };
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [client, executeTx]
   );
 
