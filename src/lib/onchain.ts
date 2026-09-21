@@ -26,8 +26,17 @@ export function resetLastSubmittedTxId(): void {
 
 export async function createMidnightProviders(api: any) {
   const zkConfigPath = window.location.origin;
+  const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    let url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/bboard/")) {
+      if (url.endsWith(".verifier") || url.endsWith(".prover")) url = url.replace("/bboard/", "/keys/");
+      else if (url.endsWith(".zkir")) url = url.replace("/bboard/", "/zkir/");
+    }
+    return fetch(url, init);
+  };
+
   const keyMaterialProvider = new FetchZkConfigProvider<any>(zkConfigPath, { 
-    fetchFunc: fetch.bind(window), 
+    fetchFunc: customFetch, 
     verify: 'require-if-present' 
   });
   
