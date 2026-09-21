@@ -146,6 +146,21 @@ export class Contract {
                                            amount_0,
                                            salt_0);
         partialProofData.output = { value: [], alignment: [] };
+        // Push to callProofDataTrace for new SDK (v0.19+) compatibility
+        if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
+          const _cc = context.callContext || contextOrig_0.callContext;
+          const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
+          contextOrig_0.callProofDataTrace.push({
+            circuitId: _cc ? _cc.circuitId : '__call__',
+            contractAddress: _cc ? _cc.contractAddress : '',
+            finalQueryContext: _qc,
+            publicTranscript: partialProofData.publicTranscript,
+            input: partialProofData.input,
+            output: partialProofData.output,
+            privateTranscriptOutputs: partialProofData.privateTranscriptOutputs,
+            commCommData: null
+          });
+        }
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
       revealBid: (...args_1) => {
@@ -203,6 +218,21 @@ export class Contract {
                                            amount_0,
                                            salt_0);
         partialProofData.output = { value: [], alignment: [] };
+        // Push to callProofDataTrace for new SDK (v0.19+) compatibility
+        if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
+          const _cc = context.callContext || contextOrig_0.callContext;
+          const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
+          contextOrig_0.callProofDataTrace.push({
+            circuitId: _cc ? _cc.circuitId : '__call__',
+            contractAddress: _cc ? _cc.contractAddress : '',
+            finalQueryContext: _qc,
+            publicTranscript: partialProofData.publicTranscript,
+            input: partialProofData.input,
+            output: partialProofData.output,
+            privateTranscriptOutputs: partialProofData.privateTranscriptOutputs,
+            commCommData: null
+          });
+        }
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
       settleAuction: (...args_1) => {
@@ -242,6 +272,21 @@ export class Contract {
                                                partialProofData,
                                                callerId_0);
         partialProofData.output = { value: [], alignment: [] };
+        // Push to callProofDataTrace for new SDK (v0.19+) compatibility
+        if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
+          const _cc = context.callContext || contextOrig_0.callContext;
+          const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
+          contextOrig_0.callProofDataTrace.push({
+            circuitId: _cc ? _cc.circuitId : '__call__',
+            contractAddress: _cc ? _cc.contractAddress : '',
+            finalQueryContext: _qc,
+            publicTranscript: partialProofData.publicTranscript,
+            input: partialProofData.input,
+            output: partialProofData.output,
+            privateTranscriptOutputs: partialProofData.privateTranscriptOutputs,
+            commCommData: null
+          });
+        }
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
       openReveal: (...args_1) => {
@@ -281,6 +326,21 @@ export class Contract {
                                             partialProofData,
                                             callerId_0);
         partialProofData.output = { value: [], alignment: [] };
+        // Push to callProofDataTrace for new SDK (v0.19+) compatibility
+        if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
+          const _cc = context.callContext || contextOrig_0.callContext;
+          const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
+          contextOrig_0.callProofDataTrace.push({
+            circuitId: _cc ? _cc.circuitId : '__call__',
+            contractAddress: _cc ? _cc.contractAddress : '',
+            finalQueryContext: _qc,
+            publicTranscript: partialProofData.publicTranscript,
+            input: partialProofData.input,
+            output: partialProofData.output,
+            privateTranscriptOutputs: partialProofData.privateTranscriptOutputs,
+            commCommData: null
+          });
+        }
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       }
     };
