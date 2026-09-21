@@ -150,9 +150,15 @@ export class Contract {
         if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
           const _cc = context.callContext || contextOrig_0.callContext;
           const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
-          console.log('[DEBUG] _qc:', _qc);
-          console.log('[DEBUG] _qc keys:', _qc ? Object.keys(_qc) : 'null');
-          console.log('[DEBUG] _qc proto:', _qc ? Object.keys(Object.getPrototypeOf(_qc)) : 'null');
+          
+          let st;
+          try {
+             st = _qc ? _qc.state : undefined;
+             console.log('[DEBUG] _qc.state:', st);
+          } catch (e) {
+             console.log('[DEBUG] error getting _qc.state:', e.message);
+          }
+
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
@@ -225,9 +231,15 @@ export class Contract {
         if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
           const _cc = context.callContext || contextOrig_0.callContext;
           const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
-          console.log('[DEBUG] _qc:', _qc);
-          console.log('[DEBUG] _qc keys:', _qc ? Object.keys(_qc) : 'null');
-          console.log('[DEBUG] _qc proto:', _qc ? Object.keys(Object.getPrototypeOf(_qc)) : 'null');
+          
+          let st;
+          try {
+             st = _qc ? _qc.state : undefined;
+             console.log('[DEBUG] _qc.state:', st);
+          } catch (e) {
+             console.log('[DEBUG] error getting _qc.state:', e.message);
+          }
+
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
@@ -282,9 +294,15 @@ export class Contract {
         if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
           const _cc = context.callContext || contextOrig_0.callContext;
           const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
-          console.log('[DEBUG] _qc:', _qc);
-          console.log('[DEBUG] _qc keys:', _qc ? Object.keys(_qc) : 'null');
-          console.log('[DEBUG] _qc proto:', _qc ? Object.keys(Object.getPrototypeOf(_qc)) : 'null');
+          
+          let st;
+          try {
+             st = _qc ? _qc.state : undefined;
+             console.log('[DEBUG] _qc.state:', st);
+          } catch (e) {
+             console.log('[DEBUG] error getting _qc.state:', e.message);
+          }
+
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
@@ -339,9 +357,15 @@ export class Contract {
         if (contextOrig_0 && Array.isArray(contextOrig_0.callProofDataTrace)) {
           const _cc = context.callContext || contextOrig_0.callContext;
           const _qc = _cc ? _cc.currentQueryContext : (context.currentQueryContext || contextOrig_0.currentQueryContext);
-          console.log('[DEBUG] _qc:', _qc);
-          console.log('[DEBUG] _qc keys:', _qc ? Object.keys(_qc) : 'null');
-          console.log('[DEBUG] _qc proto:', _qc ? Object.keys(Object.getPrototypeOf(_qc)) : 'null');
+          
+          let st;
+          try {
+             st = _qc ? _qc.state : undefined;
+             console.log('[DEBUG] _qc.state:', st);
+          } catch (e) {
+             console.log('[DEBUG] error getting _qc.state:', e.message);
+          }
+
           contextOrig_0.callProofDataTrace.push({
             circuitId: _cc ? _cc.circuitId : '__call__',
             contractAddress: _cc ? _cc.contractAddress : '',
