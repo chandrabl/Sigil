@@ -3,7 +3,7 @@
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
-import { ContractState, StateValue, ChargedState, ContractOperation } from "@midnight-ntwrk/compact-runtime";
+import { ContractState, emptyZswapLocalState } from "@midnight-ntwrk/compact-runtime";
 import { Contract } from "../../managed/auction/contract/index.js";
 import { fromHex, toHex } from "@midnight-ntwrk/midnight-js-protocol/compact-runtime";
 import { Binding, Proof, SignatureEnabled, Transaction } from "@midnight-ntwrk/midnight-js-protocol/ledger";
@@ -81,17 +81,12 @@ export async function createMidnightProviders(api: any) {
   let cachedContractState: ContractState | null = null;
   const buildFreshContractState = async (): Promise<ContractState> => {
     if (cachedContractState) return cachedContractState;
-    // Build the ContractState manually — identical to what contract.initialState() does
-    // internally but without invoking createCircuitContext (which has an arg-order mismatch
-    // between the compiled contract and the current SDK version).
-    const state = new ContractState();
-    let sv = StateValue.newArray();
-    for (let i = 0; i < 12; i++) sv = (sv as any).arrayPush(StateValue.newNull());
-    (state as any).data = new ChargedState(sv);
-    (state as any).setOperation('commitBid', new ContractOperation());
-    (state as any).setOperation('revealBid', new ContractOperation());
-    (state as any).setOperation('settleAuction', new ContractOperation());
-    (state as any).setOperation('openReveal', new ContractOperation());
+    const dummyContract = new Contract({});
+    const res = await (dummyContract as any).initialState({
+      initialPrivateState: {},
+      initialZswapLocalState: emptyZswapLocalState(new Uint8Array(32) as any),
+    }, new Uint8Array(32), "", 0n);
+    const state: ContractState = res.currentContractState;
     injectVerifierKeys(state);
     cachedContractState = state;
     return state;

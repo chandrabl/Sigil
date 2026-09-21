@@ -347,7 +347,17 @@ export class Contract {
     state_0.setOperation('revealBid', new __compactRuntime.ContractOperation());
     state_0.setOperation('settleAuction', new __compactRuntime.ContractOperation());
     state_0.setOperation('openReveal', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext('__init__', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0, constructorContext_0.initialPrivateState);
+    // Shim: new SDK wraps state inside callContext; alias back to top-level for old generated code.
+    if (context.callContext && !context.currentQueryContext) {
+      Object.defineProperty(context, 'currentQueryContext', { get: () => context.callContext.currentQueryContext, configurable: true });
+    }
+    if (context.callContext && context.currentPrivateState === undefined) {
+      Object.defineProperty(context, 'currentPrivateState', { get: () => context.callContext.currentPrivateState, configurable: true });
+    }
+    if (context.callContext && context.currentZswapLocalState === undefined) {
+      Object.defineProperty(context, 'currentZswapLocalState', { get: () => context.callContext.currentZswapLocalState, configurable: true });
+    }
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
