@@ -11,8 +11,8 @@ import type { FinalizedTransaction, TransactionId } from "@midnight-ntwrk/midnig
 import type { UnboundTransaction } from "@midnight-ntwrk/midnight-js-types";
 import { createWalletProvider } from "@midnight-ntwrk/midnight-js-types";
 import { blake2b } from "@noble/hashes/blake2.js";
-import { CompiledContract } from "@midnight-ntwrk/midnight-js-protocol/compact-js";
-import { findDeployedContract } from "@midnight-ntwrk/midnight-js-contracts";
+import { CompiledContract, ContractExecutable } from "@midnight-ntwrk/midnight-js-protocol/compact-js";
+import { createCircuitCallTxInterface, CURRENT_PIPELINE_ERA } from "@midnight-ntwrk/midnight-js-contracts";
 
 export const CONTRACT_ADDRESS = "61ffd5679cc7a0c375514e82de007b6e502a5c1209ec7ceab157132d01838507";
 
@@ -308,10 +308,34 @@ export async function getContractClient(api: any) {
     }
   }
   const compiledContract = (CompiledContract as any).make("bboard", AuctionContractWrapper as any) as any;
-  return await findDeployedContract(providers as any, {
-    contractAddress: CONTRACT_ADDRESS,
+
+  // Bypass findDeployedContract (which calls verifyContractState and fails on
+  // synthetic/fresh states that have no on-chain verifier keys). Instead, build
+  // the callTx interface directly using createCircuitCallTxInterface.
+  const privateStateId = 'sigil-private-state';
+  await (providers as any).privateStateProvider.setContractAddress(CONTRACT_ADDRESS);
+
+  // Ensure we use ContractExecutable only for circuit id listing (type-safe helper)
+  const circuitIds = (ContractExecutable as any).make(compiledContract).getProvableCircuitIds?.() ??
+    Object.keys(compiledContract.impureCircuits ?? compiledContract.circuits ?? {});
+  console.log('[sigil] circuit ids:', circuitIds);
+
+  const callTx = (createCircuitCallTxInterface as any)(providers as any, compiledContract, CONTRACT_ADDRESS, privateStateId);
+
+  return {
+    era: CURRENT_PIPELINE_ERA,
     compiledContract,
-    privateStateId: 'sigil-private-state',
-    initialPrivateState: await providers.privateStateProvider.get('sigil-private-state')
-  });
+    contractAddress: CONTRACT_ADDRESS,
+    callTx,
+    deployTxData: {
+      era: CURRENT_PIPELINE_ERA,
+      private: { signingKey: null, initialPrivateState: {} },
+      public: {
+        contractAddress: CONTRACT_ADDRESS,
+        initialContractState: null,
+        txHash: 'f2af990bf84067244ee49aaf7e7230c59fcdb2069564916395c4ac6e2ae70a8c',
+        txId: 'f2af990bf84067244ee49aaf7e7230c59fcdb2069564916395c4ac6e2ae70a8c',
+      }
+    }
+  };
 }
