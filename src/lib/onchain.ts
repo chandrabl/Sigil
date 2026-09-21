@@ -230,17 +230,20 @@ export async function createMidnightProviders(api: any) {
       getEncryptionPublicKey: () => shieldedEncPk,
       balanceTx: async (tx: UnboundTransaction): Promise<FinalizedTransaction> => {
         const serializedTx = toHex(tx.serialize());
-        if (typeof api.balanceUnsealedTransaction === "function") {
-          try {
-            const received = await api.balanceUnsealedTransaction(serializedTx);
-            return Transaction.deserialize<SignatureEnabled, Proof, Binding>(
-              "signature",
-              "proof",
-              "binding",
-              fromHex(received.tx),
-            );
-          } catch (walletBalErr) {}
-        }
+          if (typeof api.balanceUnsealedTransaction === "function") {
+            try {
+              const received = await api.balanceUnsealedTransaction(serializedTx);
+              return Transaction.deserialize<SignatureEnabled, Proof, Binding>(
+                "signature",
+                "proof",
+                "binding",
+                fromHex(received.tx),
+              );
+            } catch (walletBalErr) {
+              console.error('Wallet balanceUnsealedTransaction failed:', walletBalErr);
+              throw walletBalErr;
+            }
+          }
         
         const txBytes = tx.serialize();
         const balanceResp = await fetch("https://api-preprod.1am.xyz/balance-only", {
