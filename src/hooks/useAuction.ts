@@ -36,7 +36,10 @@ export function useAuction(lotName: string, reservePrice: bigint) {
     let unmounted = false;
     getContractClient(api).then((c) => {
       if (!unmounted) setClient(c);
-    }).catch(console.error);
+    }).catch((e) => {
+      console.error("GET_CONTRACT_CLIENT_ERROR", e);
+      alert("SDK Initialization Error: " + e.message);
+    });
     return () => { unmounted = true; };
   }, [api]);
 
@@ -48,7 +51,14 @@ export function useAuction(lotName: string, reservePrice: bigint) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const executeTx = useCallback(async (label: string, callFn: () => Promise<any>) => {
-    if (!client) throw new Error("Midnight SDK is not initialized yet.");
+    if (!api) {
+      alert("Please connect your Midnight wallet first!");
+      throw new Error("Wallet not connected.");
+    }
+    if (!client) {
+      alert("SDK is not initialized. Please check if there were initialization errors, or wait a moment.");
+      throw new Error("Midnight SDK is not initialized yet.");
+    }
     setPending(true);
     setLastError(null);
     resetLastSubmittedTxId();
