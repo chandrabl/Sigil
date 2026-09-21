@@ -1,18 +1,8 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 __compactRuntime.checkRuntimeVersion('0.19.0');
 
-// SDK v5.0.0-beta.8 wraps the context under callContext — normalize it back to the flat format the generated code expects
-const _normalizeCtx = (ctx) => {
-  if (!ctx) return ctx;
-  // New format: { callContext: { currentQueryContext, ... }, queryContexts, ... }
-  if (ctx.callContext && ctx.callContext.currentQueryContext != null && ctx.currentQueryContext == null) {
-    const flat = Object.assign({}, ctx.callContext);
-    // keep top-level fields the generated code may also read
-    flat._fullCtx = ctx;
-    return flat;
-  }
-  return ctx;
-};
+// SDK v5.0.0-beta.8 compatibility: type-check guards below accept both old flat format
+// { currentQueryContext } and new wrapped format { callContext: { currentQueryContext } }
 
 export var Phase;
 (function (Phase) {
@@ -105,11 +95,11 @@ export class Contract {
         if (args_1.length !== 4) {
           throw new __compactRuntime.CompactError(`commitBid: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
-        const contextOrig_0 = _normalizeCtx(args_1[0]);
+        const contextOrig_0 = args_1[0];
         const bidderId_0 = args_1[1];
         const amount_0 = args_1[2];
         const salt_0 = args_1[3];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && (contextOrig_0.currentQueryContext != undefined || (contextOrig_0.callContext && contextOrig_0.callContext.currentQueryContext != undefined)))) {
           __compactRuntime.typeError('commitBid',
                                      'argument 1 (as invoked from Typescript)',
                                      'bboard.compact line 39 char 1',
@@ -159,11 +149,11 @@ export class Contract {
         if (args_1.length !== 4) {
           throw new __compactRuntime.CompactError(`revealBid: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
-        const contextOrig_0 = _normalizeCtx(args_1[0]);
+        const contextOrig_0 = args_1[0];
         const bidderId_0 = args_1[1];
         const amount_0 = args_1[2];
         const salt_0 = args_1[3];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && (contextOrig_0.currentQueryContext != undefined || (contextOrig_0.callContext && contextOrig_0.callContext.currentQueryContext != undefined)))) {
           __compactRuntime.typeError('revealBid',
                                      'argument 1 (as invoked from Typescript)',
                                      'bboard.compact line 56 char 1',
@@ -213,9 +203,9 @@ export class Contract {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`settleAuction: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
-        const contextOrig_0 = _normalizeCtx(args_1[0]);
+        const contextOrig_0 = args_1[0];
         const callerId_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && (contextOrig_0.currentQueryContext != undefined || (contextOrig_0.callContext && contextOrig_0.callContext.currentQueryContext != undefined)))) {
           __compactRuntime.typeError('settleAuction',
                                      'argument 1 (as invoked from Typescript)',
                                      'bboard.compact line 81 char 1',
@@ -249,9 +239,9 @@ export class Contract {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`openReveal: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
-        const contextOrig_0 = _normalizeCtx(args_1[0]);
+        const contextOrig_0 = args_1[0];
         const callerId_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && (contextOrig_0.currentQueryContext != undefined || (contextOrig_0.callContext && contextOrig_0.callContext.currentQueryContext != undefined)))) {
           __compactRuntime.typeError('openReveal',
                                      'argument 1 (as invoked from Typescript)',
                                      'bboard.compact line 91 char 1',
