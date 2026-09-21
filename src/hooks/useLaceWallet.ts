@@ -226,12 +226,25 @@ export function useLaceWallet(): WalletState {
       try {
         let connResult: InjectedConnectionResult | null = null;
 
-        // Try connect("preprod") first, then fallback to connect() then enable()
+        // Try connect("preprod") first, then fallback to enable() if connect isn't there
         if (typeof provider.connect === "function") {
           try {
             connResult = await provider.connect("preprod");
-          } catch {
-            connResult = await provider.connect();
+          } catch (connectErr) {
+            console.error("provider.connect('preprod') failed:", connectErr);
+            // Some older wallets might need connect() with no args.
+            // Let's only fallback if we really have to, but save the error.
+            try {
+              connResult = await provider.connect();
+            } catch (fallbackErr) {
+              console.error("Fallback provider.connect() also failed:", fallbackErr);
+              // Throw the ORIGINAL error if it's more descriptive, or if the fallback was just 'undefined network'.
+              const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+              if (fallbackMsg.includes("Invalid network ID: undefined")) {
+                 throw connectErr; // the original error is the real reason
+              }
+              throw fallbackErr;
+            }
           }
         } else if (typeof provider.enable === "function") {
           connResult = await provider.enable();
