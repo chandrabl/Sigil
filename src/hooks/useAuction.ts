@@ -32,9 +32,9 @@ export function useAuction(lotName: string, reservePrice: bigint) {
   const [lastTx, setLastTx] = useState<{ hash: string; txHash: string; label: string } | null>(null);
 
   useEffect(() => {
-    if (!api) return;
+    if (!api || !api.provider) return;
     let unmounted = false;
-    getContractClient(api).then((c) => {
+    getContractClient(api.provider).then((c) => {
       if (!unmounted) setClient(c);
     }).catch((e) => {
       console.error("GET_CONTRACT_CLIENT_ERROR", e);
