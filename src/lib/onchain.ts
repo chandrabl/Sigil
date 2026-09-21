@@ -239,8 +239,7 @@ export async function createMidnightProviders(api: any) {
                 serialize: () => fromHex(received.tx)
               } as unknown as FinalizedTransaction;
             } catch (walletBalErr) {
-              console.error('Wallet balanceUnsealedTransaction failed:', walletBalErr);
-              throw walletBalErr;
+              console.warn('Wallet balanceUnsealedTransaction failed, trying fallback...', walletBalErr);
             }
           }
         
