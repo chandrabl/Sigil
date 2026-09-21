@@ -29,7 +29,8 @@ export interface InjectedConnectionResult {
   }>;
   getUnshieldedAddress?: () => Promise<string>;
   submitTransaction?: (payload: unknown) => Promise<string>;
-  signData?: (data: Uint8Array) => Promise<string>;
+  /** 1AM wallet API: signData(hexString, { encoding: 'hex' | 'base64' | 'text' }) */
+  signData?: (data: string, options?: { encoding?: string }) => Promise<string>;
   [key: string]: unknown;
 }
 

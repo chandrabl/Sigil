@@ -78,27 +78,34 @@ export default function App() {
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-moss-400 animate-pulse" />
               <span>
-                <strong>{auction.lastTx.action}</strong> submitted to Midnight Preprod!
+                <strong>{auction.lastTx.action}</strong> recorded
+                {auction.lastTx.isRealTx ? " on Midnight Preprod!" : " locally (simulation)."}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={auction.lastTx.explorerUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 font-medium underline underline-offset-2 text-moss-200 hover:text-white"
-              >
-                ⚡ Verify on 1AM Explorer ↗
-              </a>
-              <a
-                href={auction.lastTx.midnightExplorerUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 font-medium underline underline-offset-2 text-moss-300 hover:text-white"
-              >
-                🌙 Midnight Explorer ↗
-              </a>
-            </div>
+            {auction.lastTx.isRealTx && (
+              <div className="flex flex-wrap gap-2">
+                {auction.lastTx.explorerUrl && (
+                  <a
+                    href={auction.lastTx.explorerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium underline underline-offset-2 text-moss-200 hover:text-white"
+                  >
+                    ⚡ Verify on 1AM Explorer ↗
+                  </a>
+                )}
+                {auction.lastTx.midnightExplorerUrl && (
+                  <a
+                    href={auction.lastTx.midnightExplorerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium underline underline-offset-2 text-moss-300 hover:text-white"
+                  >
+                    🌙 Midnight Explorer ↗
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

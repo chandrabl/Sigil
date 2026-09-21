@@ -90,25 +90,35 @@ export function OnChainActivity({
 
                 {/* Explorer links */}
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {/* Primary: 1AM Explorer */}
-                  <a
-                    href={tx.explorerUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-sm border border-brass-500/40 bg-brass-500/10 px-2.5 py-1 text-[11px] font-medium text-brass-300 hover:bg-brass-500/20 hover:text-brass-200 transition-colors"
-                  >
-                    ⚡ 1AM Explorer ↗
-                  </a>
+                  {tx.isRealTx && tx.explorerUrl ? (
+                    <>
+                      {/* Primary: 1AM Explorer */}
+                      <a
+                        href={tx.explorerUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-sm border border-brass-500/40 bg-brass-500/10 px-2.5 py-1 text-[11px] font-medium text-brass-300 hover:bg-brass-500/20 hover:text-brass-200 transition-colors"
+                      >
+                        ⚡ 1AM Explorer ↗
+                      </a>
 
-                  {/* Secondary: Midnight Block Explorer */}
-                  <a
-                    href={tx.midnightExplorerUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-sm border border-ink-600 bg-ink-800/60 px-2.5 py-1 text-[11px] font-medium text-parchment-400 hover:bg-ink-800 hover:text-parchment-200 transition-colors"
-                  >
-                    🌙 Midnight Explorer ↗
-                  </a>
+                      {/* Secondary: Midnight Block Explorer */}
+                      {tx.midnightExplorerUrl && (
+                        <a
+                          href={tx.midnightExplorerUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-sm border border-ink-600 bg-ink-800/60 px-2.5 py-1 text-[11px] font-medium text-parchment-400 hover:bg-ink-800 hover:text-parchment-200 transition-colors"
+                        >
+                          🌙 Midnight Explorer ↗
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-ink-700 bg-ink-900/60 px-2.5 py-1 text-[11px] text-parchment-500">
+                      🔒 Simulated — connect wallet with DUST for on-chain tx
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

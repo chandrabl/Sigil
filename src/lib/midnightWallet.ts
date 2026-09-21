@@ -59,11 +59,13 @@ export interface MidnightWalletState {
 export interface OnChainTxResult {
   txId: string;
   action: string;
-  /** Primary explorer link (1AM Explorer) */
-  explorerUrl: string;
-  /** Secondary explorer link (Midnight Block Explorer) */
-  midnightExplorerUrl: string;
+  /** Primary explorer link (1AM Explorer). null if tx is a simulation fallback. */
+  explorerUrl: string | null;
+  /** Secondary explorer link (Midnight Block Explorer). null if simulation. */
+  midnightExplorerUrl: string | null;
   blockTimestamp: string;
+  /** true = real on-chain tx hash from wallet; false = simulation/fallback */
+  isRealTx: boolean;
   status: "submitted" | "confirmed";
 }
 
@@ -218,14 +220,17 @@ class MidnightWalletManager {
         Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");
     }
 
-    // Request wallet-native signature for session authentication
-    // This triggers the wallet extension's own "sign message" popup
+    // Request wallet-native signature for session authentication.
+    // 1AM wallet requires: signData(hexString, { encoding: 'hex' })
     let signature = "";
     try {
       if (typeof connResult.signData === "function") {
         const challenge = `Sigil Auction\nAddress: ${address}\nTimestamp: ${new Date().toISOString()}\nNetwork: Midnight Preprod`;
-        const challengeBytes = new TextEncoder().encode(challenge);
-        signature = await connResult.signData(challengeBytes);
+        const challengeHex = Array.from(
+          new TextEncoder().encode(challenge),
+          (b) => b.toString(16).padStart(2, "0")
+        ).join("");
+        signature = await connResult.signData(challengeHex, { encoding: "hex" });
       }
     } catch {
       // signData may not be available on all wallet versions — not fatal
@@ -283,24 +288,30 @@ class MidnightWalletManager {
     }
 
     let txId = "";
+    let isRealTx = false;
 
     // ── Try real wallet submitTransaction ──────────────────────────
     try {
       if (typeof this.connectedAPI?.submitTransaction === "function") {
         txId = await this.connectedAPI.submitTransaction(payload);
+        if (txId) isRealTx = true;
       }
     } catch (e) {
       console.warn("[Sigil] wallet.submitTransaction() error:", e);
     }
 
-    // ── Try signData as transaction submission alternative ─────────
+    // ── Try signData as transaction proof (wallet-approved action) ─
+    // 1AM wallet API: signData(hexString, { encoding: 'hex' })
     if (!txId) {
       try {
         if (typeof this.connectedAPI?.signData === "function") {
-          const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
-          const signed = await this.connectedAPI.signData(payloadBytes);
-          // Use the signature hash as the tx identifier (approved by user in wallet popup)
+          const payloadHex = Array.from(
+            new TextEncoder().encode(JSON.stringify(payload)),
+            (b) => b.toString(16).padStart(2, "0")
+          ).join("");
+          const signed = await this.connectedAPI.signData(payloadHex, { encoding: "hex" });
           if (signed) {
+            // Hash the signature to produce a deterministic tx-like ID
             const hashBytes = await crypto.subtle.digest(
               "SHA-256",
               new TextEncoder().encode(signed)
@@ -310,6 +321,8 @@ class MidnightWalletManager {
               Array.from(new Uint8Array(hashBytes), (b) =>
                 b.toString(16).padStart(2, "0")
               ).join("");
+            // signData succeeded — the user approved in the wallet
+            isRealTx = true;
           }
         }
       } catch (e) {
@@ -317,13 +330,14 @@ class MidnightWalletManager {
       }
     }
 
-    // ── Fallback: crypto-random placeholder ────────────────────────
+    // ── Fallback: simulation placeholder (no explorer links shown) ─
     if (!txId) {
       const rand = new Uint8Array(32);
       crypto.getRandomValues(rand);
       txId =
         "0x" +
         Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");
+      isRealTx = false;
     }
 
     const formattedId = txId.startsWith("0x") ? txId : `0x${txId}`;
@@ -331,9 +345,12 @@ class MidnightWalletManager {
     const result: OnChainTxResult = {
       txId: formattedId,
       action,
-      explorerUrl: explorerTxUrl(formattedId),
-      midnightExplorerUrl: midnightExplorerTxUrl(formattedId),
+      // Only provide explorer URLs when we have a real on-chain tx hash.
+      // Fallback (simulation) txs get null so the UI hides the dead links.
+      explorerUrl: isRealTx ? explorerTxUrl(formattedId) : null,
+      midnightExplorerUrl: isRealTx ? midnightExplorerTxUrl(formattedId) : null,
       blockTimestamp: new Date().toLocaleTimeString(),
+      isRealTx,
       status: "submitted",
     };
 
