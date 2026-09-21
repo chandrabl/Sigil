@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getContractClient, getLastSubmittedTxId, resetLastSubmittedTxId } from "../lib/onchain";
 import { type Hex32, Phase } from "../lib/auctionLogic";
 import { useLaceWallet } from "./useLaceWallet";
-import { Buffer } from "buffer";
+import { fromHex, toHex } from "@midnight-ntwrk/midnight-js-protocol/compact-runtime";
 
 export interface MyBidRecord {
   amount: bigint;
@@ -43,7 +43,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
   const randomSalt = () => {
     const array = new Uint8Array(32);
     window.crypto.getRandomValues(array);
-    return Buffer.from(array).toString("hex") as Hex32;
+    return toHex(array) as Hex32;
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,8 +86,8 @@ export function useAuction(lotName: string, reservePrice: bigint) {
   const commit = useCallback(
     async (bidderId: Hex32, amount: bigint) => {
       const salt = randomSalt();
-      const bidderIdBytes = new Uint8Array(Buffer.from(bidderId, "hex"));
-      const saltBytes = new Uint8Array(Buffer.from(salt, "hex"));
+      const bidderIdBytes = fromHex(bidderId);
+      const saltBytes = fromHex(salt);
       
       await executeTx("Commit Sealed Bid", () => 
         client.callTx.commitBid(bidderIdBytes, amount, saltBytes)
@@ -108,7 +108,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
 
   const openReveal = useCallback(
     async (sellerId: Hex32) => {
-      const sellerIdBytes = new Uint8Array(Buffer.from(sellerId, "hex"));
+      const sellerIdBytes = fromHex(sellerId);
       await executeTx("Open Reveal Phase", () => 
         client.callTx.openReveal(sellerIdBytes)
       );
@@ -123,8 +123,8 @@ export function useAuction(lotName: string, reservePrice: bigint) {
         setLastError("No sealed bid found for this wallet in this session.");
         return;
       }
-      const bidderIdBytes = new Uint8Array(Buffer.from(bidderId, "hex"));
-      const saltBytes = new Uint8Array(Buffer.from(myBid.salt, "hex"));
+      const bidderIdBytes = fromHex(bidderId);
+      const saltBytes = fromHex(myBid.salt);
       
       await executeTx("Reveal Sealed Bid", () => 
         client.callTx.revealBid(bidderIdBytes, myBid.amount, saltBytes)
@@ -145,7 +145,7 @@ export function useAuction(lotName: string, reservePrice: bigint) {
 
   const settle = useCallback(
     async (sellerId: Hex32) => {
-      const sellerIdBytes = new Uint8Array(Buffer.from(sellerId, "hex"));
+      const sellerIdBytes = fromHex(sellerId);
       await executeTx("Settle Auction Lot", () => 
         client.callTx.settleAuction(sellerIdBytes)
       );
