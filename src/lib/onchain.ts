@@ -3,7 +3,7 @@
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
-import { ContractState, emptyZswapLocalState, ContractOperation } from "@midnight-ntwrk/compact-runtime";
+import { ContractState, ContractOperation } from "@midnight-ntwrk/compact-runtime";
 import { Contract } from "../../managed/auction/contract/index.js";
 import { fromHex, toHex } from "@midnight-ntwrk/midnight-js-protocol/compact-runtime";
 import { Binding, Proof, SignatureEnabled, Transaction } from "@midnight-ntwrk/midnight-js-protocol/ledger";
