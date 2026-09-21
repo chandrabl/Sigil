@@ -26,7 +26,10 @@ export function resetLastSubmittedTxId(): void {
 
 export async function createMidnightProviders(api: any) {
   const zkConfigPath = window.location.origin;
-  const keyMaterialProvider = new FetchZkConfigProvider<any>(zkConfigPath, { fetchFunc: fetch.bind(window) });
+  const keyMaterialProvider = new FetchZkConfigProvider<any>(zkConfigPath, { 
+    fetchFunc: fetch.bind(window), 
+    verify: 'require-if-present' 
+  });
   
   let proverUri = "https://api-preprod.1am.xyz";
   let indexerUri = "https://indexer.preprod.midnight.network/api/v4/graphql";
