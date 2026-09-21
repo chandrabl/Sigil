@@ -230,11 +230,7 @@ export function useLaceWallet(): WalletState {
           try {
             connResult = await provider.connect("preprod");
           } catch {
-            try {
-              connResult = await provider.connect();
-            } catch (innerErr) {
-              throw innerErr;
-            }
+            connResult = await provider.connect();
           }
         } else if (typeof provider.enable === "function") {
           connResult = await provider.enable();
